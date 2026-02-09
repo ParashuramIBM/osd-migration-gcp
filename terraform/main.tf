@@ -53,7 +53,6 @@ module "openshift_cluster" {
   cluster_name           = var.cluster_name
   cloud_provider         = "gcp"
   cloud_region           = var.gcp_region
-  aws_account_id         = var.aws_account_id
   
   # Network Configuration
   subnet_ids             = module.vpc.subnet_ids

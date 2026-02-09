@@ -55,8 +55,3 @@ variable "rhcs_token" {
   type        = string
   sensitive   = true
 }
-
-variable "aws_account_id" {
-  description = "AWS account ID (required for OSD)"
-  type        = string
-}

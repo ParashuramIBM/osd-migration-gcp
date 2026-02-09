@@ -250,7 +250,6 @@ Created comprehensive `variables.tf` with all required variables:
 variable "cluster_name" { ... }
 variable "cloud_provider" { ... }
 variable "cloud_region" { ... }
-variable "aws_account_id" { ... }
 variable "openshift_version" { ... }
 variable "multi_az" { ... }
 variable "compute_machine_type" { ... }
@@ -282,13 +281,12 @@ variable "private" { ... }
 - api
 - compute_nodes
 - gcp
-- aws
 - pull_secret
 - timeouts
 ```
 
 **Root Cause**:
-The `rhcs_cluster_rosa_classic` resource is designed for AWS ROSA clusters, not GCP OpenShift Dedicated. The attributes used don't match the resource schema.
+The `rhcs_cluster_rosa_classic` resource is designed for Red Hat OpenShift Service on AWS (ROSA), not GCP OpenShift Dedicated. The attributes used don't match the resource schema.
 
 **Solution**:
 Replaced with a placeholder implementation that documents the correct approach:
@@ -411,7 +409,7 @@ git push origin develop --force
 ```
 Missing required parameters in module calls:
 - workload_identity module: cluster_name
-- openshift module: network_name, gcp_project_id, aws_account_id
+- openshift module: network_name, gcp_project_id
 ```
 
 **Root Cause**:
@@ -435,7 +433,6 @@ module "openshift_cluster" {
   
   cluster_name           = var.cluster_name
   cloud_region           = var.gcp_region
-  aws_account_id         = var.aws_account_id  # Added
   
   subnet_ids             = module.vpc.subnet_ids
   network_name           = module.vpc.network_name  # Added

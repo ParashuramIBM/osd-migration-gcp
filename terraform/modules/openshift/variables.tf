@@ -4,18 +4,13 @@ variable "cluster_name" {
 }
 
 variable "cloud_provider" {
-  description = "Cloud provider (gcp, aws, azure)"
+  description = "Cloud provider (gcp only)"
   type        = string
   default     = "gcp"
 }
 
 variable "cloud_region" {
-  description = "Cloud region for deployment"
-  type        = string
-}
-
-variable "aws_account_id" {
-  description = "AWS account ID (required for OSD)"
+  description = "GCP region for deployment"
   type        = string
 }
 

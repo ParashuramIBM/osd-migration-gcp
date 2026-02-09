@@ -40,7 +40,6 @@ This project automates the deployment of OpenShift Dedicated clusters on GCP usi
 - GCP Project with billing enabled
 - Red Hat account with OpenShift subscription
 - GitHub repository with Actions enabled
-- AWS account (for OSD billing integration)
 
 ### Required Permissions
 
@@ -157,9 +156,6 @@ export GITHUB_REPO="owner/repo"
 export CLUSTER_NAME="osd-gcp-cluster"
 export OPENSHIFT_VERSION="4.14"
 
-# AWS Configuration (for OSD billing)
-export AWS_ACCOUNT_ID="your-aws-account-id"
-
 # Red Hat Configuration
 export RHCS_TOKEN="your-rhcs-token"
 export PULL_SECRET='{"auths":{"cloud.openshift.com":{"auth":"..."}}}'
@@ -206,7 +202,6 @@ terraform apply -var-file=prod.tfvars
    - `GCP_SERVICE_ACCOUNT`
    - `RHCS_TOKEN`
    - `PULL_SECRET`
-   - `AWS_ACCOUNT_ID`
 
 2. **Trigger Deployment**:
    - Push to `main` branch for production
@@ -262,7 +257,6 @@ multi_az            = true
 | `compute_machine_type` | Worker node machine type | `n2-standard-4` | No |
 | `compute_nodes_count` | Number of worker nodes | `3` | No |
 | `github_repo` | GitHub repository | - | Yes |
-| `aws_account_id` | AWS account for billing | - | Yes |
 
 ## 📦 Modules
 
@@ -378,7 +372,6 @@ GCP_WORKLOAD_IDENTITY_PROVIDER  # WIF provider name
 GCP_SERVICE_ACCOUNT         # Service account email
 RHCS_TOKEN                  # Red Hat Cloud Services token
 PULL_SECRET                 # OpenShift pull secret
-AWS_ACCOUNT_ID              # AWS account for billing
 ```
 
 ## 🔍 Troubleshooting
