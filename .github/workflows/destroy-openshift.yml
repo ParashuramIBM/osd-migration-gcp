@@ -1,0 +1,56 @@
+name: Destroy OpenShift Cluster
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to destroy'
+        required: true
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+
+jobs:
+  destroy:
+    name: 'Destroy Cluster'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Authenticate to GCP
+      uses: google-github-actions/auth@v1
+      with:
+        workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
+        service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: '1.5.0'
+
+    - name: Terraform Init
+      working-directory: ./terraform
+      run: terraform init
+
+    - name: Get RHCS Token
+      id: rhcs-token
+      run: |
+        RESPONSE=$(curl -s -X POST https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          -d "grant_type=password&username=${{ secrets.REDHAT_USERNAME }}&password=${{ secrets.REDHAT_PASSWORD }}&client_id=cloud-services")
+        TOKEN=$(echo $RESPONSE | jq -r '.access_token')
+        echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+    - name: Terraform Destroy
+      working-directory: ./terraform
+      env:
+        TF_VAR_rhcs_token: '${{ steps.rhcs-token.outputs.token }}'
+        TF_VAR_pull_secret: '${{ secrets.OPENSHIFT_PULL_SECRET }}'
+        TF_VAR_gcp_project_id: '${{ secrets.GCP_PROJECT_ID }}'
+        TF_VAR_github_repo: '${{ github.repository }}'
+      run: terraform destroy -var-file="${{ github.event.inputs.environment }}.tfvars" -auto-approve

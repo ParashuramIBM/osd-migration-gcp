@@ -1,0 +1,101 @@
+name: Deploy OpenShift on GCP
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+      action:
+        description: 'Terraform Action'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+        - plan
+        - apply
+        - destroy
+
+permissions:
+  contents: 'read'
+  id-token: 'write'
+
+jobs:
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Authenticate to GCP
+      id: auth
+      uses: google-github-actions/auth@v1
+      with:
+        workload_identity_provider: '${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
+        service_account: '${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}'
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: '1.5.0'
+
+    - name: Terraform Init
+      working-directory: ./terraform
+      run: terraform init
+
+    - name: Get RHCS Token
+      id: rhcs-token
+      run: |
+        RESPONSE=$(curl -s -X POST https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          -d "grant_type=password&username=${{ secrets.REDHAT_USERNAME }}&password=${{ secrets.REDHAT_PASSWORD }}&client_id=cloud-services")
+        TOKEN=$(echo $RESPONSE | jq -r '.access_token')
+        echo "token=$TOKEN" >> $GITHUB_OUTPUT
+
+    - name: Terraform Plan
+      if: github.event.inputs.action == 'plan'
+      working-directory: ./terraform
+      env:
+        TF_VAR_rhcs_token: '${{ steps.rhcs-token.outputs.token }}'
+        TF_VAR_pull_secret: '${{ secrets.OPENSHIFT_PULL_SECRET }}'
+        TF_VAR_gcp_project_id: '${{ secrets.GCP_PROJECT_ID }}'
+        TF_VAR_github_repo: '${{ github.repository }}'
+      run: terraform plan -var-file="${{ github.event.inputs.environment }}.tfvars"
+
+    - name: Terraform Apply
+      if: github.event.inputs.action == 'apply'
+      working-directory: ./terraform
+      env:
+        TF_VAR_rhcs_token: '${{ steps.rhcs-token.outputs.token }}'
+        TF_VAR_pull_secret: '${{ secrets.OPENSHIFT_PULL_SECRET }}'
+        TF_VAR_gcp_project_id: '${{ secrets.GCP_PROJECT_ID }}'
+        TF_VAR_github_repo: '${{ github.repository }}'
+      run: terraform apply -var-file="${{ github.event.inputs.environment }}.tfvars" -auto-approve
+
+    - name: Upload Kubeconfig
+      if: github.event.inputs.action == 'apply'
+      uses: actions/upload-artifact@v3
+      with:
+        name: kubeconfig
+        path: terraform/cluster_credentials.json
+
+    - name: Configure kubectl
+      if: github.event.inputs.action == 'apply'
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.27.0'
+
+    - name: Test Cluster Access
+      if: github.event.inputs.action == 'apply'
+      run: |
+        kubectl cluster-info
+        kubectl get nodes
